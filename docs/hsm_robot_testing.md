@@ -295,7 +295,7 @@ colcon test-result --verbose
 colcon test --pytest-args -m linter
 
 # the generator, the unit layer
-colcon test --packages-select hsm_controller --pytest-args -m "not linter"
+colcon test --packages-select hsm_generator --pytest-args -m "not linter"
 
 # the node layer
 colcon test --packages-select hsm_robot turtle_driver --pytest-args -m "not linter"

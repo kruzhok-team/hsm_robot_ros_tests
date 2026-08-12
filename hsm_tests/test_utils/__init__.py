@@ -2,11 +2,12 @@
 # The Cyberiada HSM-to-ROS2 testing environment
 # -----------------------------------------------------------------------------
 #
-# The test utilities: the HSM event probe, the topic recorders, the service
-# probes, the simulated clock and the pytest fixtures.
+# The test utilities: the probe recording what a node publishes, and the pytest
+# fixtures starting one node under test
 #
-# The module is a placeholder: the utilities are described in
-# docs/hsm_robot_testing.md and are implemented in a separate step.
+# The diagrams are written against the robot API, so the tests of the API drive a
+# node only through the ROS2 objects it declares: the services it advertises and
+# the topics it publishes and listens to.
 #
 # Copyright (C) 2026 Alexey Fedoseev <aleksey@fedoseev.net>
 #
@@ -24,3 +25,11 @@
 # along with this program. If not, see https://www.gnu.org/licenses/
 #
 # -----------------------------------------------------------------------------
+
+from hsm_tests.test_utils.fixtures import (NodeUnderTest, isolated_domain, node_factory,
+                                           parameter_arguments, storage_directory)
+from hsm_tests.test_utils.probes import (DEFAULT_TIMEOUT, MESSAGES_TOPIC, STR_MESSAGES_TOPIC,
+                                         Probe)
+
+__all__ = ['DEFAULT_TIMEOUT', 'MESSAGES_TOPIC', 'NodeUnderTest', 'Probe', 'STR_MESSAGES_TOPIC',
+           'isolated_domain', 'node_factory', 'parameter_arguments', 'storage_directory']

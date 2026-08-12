@@ -1,2 +1,7 @@
 *~
 *.pyc
+
+# colcon writes these when it is run from inside the repository
+build/
+install/
+log/

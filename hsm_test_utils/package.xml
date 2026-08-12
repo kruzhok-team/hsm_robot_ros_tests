@@ -1,27 +1,22 @@
 <?xml version="1.0"?>
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
-  <name>hsm_tests</name>
+  <name>hsm_test_utils</name>
   <version>1.0.0</version>
-  <description>The testing environment for the HSM-to-ROS2 framework</description>
+  <description>The test utilities of the HSM-to-ROS2 framework: the probe of a node under test and the ROS2 context of a test</description>
   <maintainer email="aleksey@fedoseev.net">Alexey Fedoseev</maintainer>
   <license>GPL-3.0-or-later</license>
 
+  <!-- the utilities are used by the tests of every package of the framework, so they
+       depend on nothing but the message definitions: a dependency on a package they help
+       to test would close a cycle -->
   <depend>hsm_interfaces</depend>
   <exec_depend>rclpy</exec_depend>
-  <exec_depend>geometry_msgs</exec_depend>
-  <exec_depend>nav_msgs</exec_depend>
-  <exec_depend>sensor_msgs</exec_depend>
-  <exec_depend>std_msgs</exec_depend>
+  <exec_depend>python3-pytest</exec_depend>
 
   <test_depend>ament_flake8</test_depend>
   <test_depend>ament_pep257</test_depend>
   <test_depend>python3-pytest</test_depend>
-  <!-- The integration and system test tiers drive the nodes through launch files -->
-  <test_depend>launch_testing</test_depend>
-  <test_depend>launch_testing_ros</test_depend>
-  <!-- The system tier runs in real time and has to be bounded -->
-  <test_depend>python3-pytest-timeout</test_depend>
 
   <export>
     <build_type>ament_python</build_type>

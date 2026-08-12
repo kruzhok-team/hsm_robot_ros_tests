@@ -23,6 +23,7 @@
 # -----------------------------------------------------------------------------
 
 import rclpy.node
+from rclpy.executors import SingleThreadedExecutor
 
 from hsm_interfaces.msg import SimpleMessage, StringArgMessage
 
@@ -42,8 +43,14 @@ class Probe(rclpy.node.Node):
     # the other side of the node under test: it records the messages the node publishes,
     # publishes what the node listens to, and calls the services the node advertises
 
-    def __init__(self, executor, name='hsm_test_probe'):
+    def __init__(self, executor=None, name='hsm_test_probe'):
         rclpy.node.Node.__init__(self, name)
+        # the node tests put the node under test and the probe in one executor, and that
+        # executor is what has to be spun. The integration tests run the framework as
+        # separate processes, so the probe is alone and spins itself
+        if executor is None:
+            executor = SingleThreadedExecutor()
+            executor.add_node(self)
         self.__executor = executor
         self.__recorders = {}
         self.__publishers = {}

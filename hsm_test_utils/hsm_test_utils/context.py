@@ -2,7 +2,8 @@
 # The Cyberiada HSM-to-ROS2 testing environment
 # -----------------------------------------------------------------------------
 #
-# The pytest fixtures which start one node under test with a probe
+# The ROS2 context of a test: the fixtures which start one node under test
+# together with its probe
 #
 # Copyright (C) 2026 Alexey Fedoseev <aleksey@fedoseev.net>
 #
@@ -27,7 +28,7 @@ import pytest
 import rclpy
 from rclpy.executors import SingleThreadedExecutor
 
-from hsm_tests.test_utils.probes import Probe
+from hsm_test_utils.probes import Probe
 
 
 def parameter_arguments(parameters):

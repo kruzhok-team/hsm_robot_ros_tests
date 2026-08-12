@@ -26,10 +26,10 @@
 #
 # -----------------------------------------------------------------------------
 
-from hsm_tests.test_utils.fixtures import (NodeUnderTest, isolated_domain, node_factory,
-                                           parameter_arguments, storage_directory)
-from hsm_tests.test_utils.probes import (DEFAULT_TIMEOUT, MESSAGES_TOPIC, STR_MESSAGES_TOPIC,
-                                         Probe)
+from hsm_test_utils.context import (NodeUnderTest, isolated_domain, node_factory,
+                                    parameter_arguments, storage_directory)
+from hsm_test_utils.probes import (DEFAULT_TIMEOUT, MESSAGES_TOPIC, STR_MESSAGES_TOPIC,
+                                   Probe)
 
 __all__ = ['DEFAULT_TIMEOUT', 'MESSAGES_TOPIC', 'NodeUnderTest', 'Probe', 'STR_MESSAGES_TOPIC',
            'isolated_domain', 'node_factory', 'parameter_arguments', 'storage_directory']

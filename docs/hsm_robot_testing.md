@@ -17,7 +17,7 @@ window.**
       | HSM controller|<--| API nodes|<--|  (the driver)|<--| (offscr.) |
       +---------------+   +----------+   +--------------+   +-----------+
 
-  L3  INTEGRATION                                  simulated time, no display
+  L3  INTEGRATION                                  shortened periods, no display
       +---------------+   +----------+   +--------------------------+
       | generated     |-->| HSM Robot|-->|      the fake robot      |
       | HSM controller|<--| API nodes|<--| /odom, /scan <- scripted |
@@ -38,7 +38,7 @@ window.**
 | L0 | `ament_flake8`, `ament_pep257` | every package | - |
 | L1 | the generated code, the state machine behaviour, the diagram validation | `hsm_robot_ros_generator/test` | no robot, no simulator |
 | L2 | the ROS2 contract of one node | `hsm_robot_ros_api/test`, `turtle_driver/test` | never starts a second framework node |
-| L3 | the HSM state sequence, the API calls, the events | `hsm_robot_ros_tests/test/integration` | simulated time, no display |
+| L3 | the HSM state sequence, the API calls, the events | `hsm_robot_ros_tests/hsm_tests/test/integration` | a domain of its own, no display |
 | L4 | the trajectory, the event order, the final position | `hsm_robot_ros_tests/test/system` | real time, a smoke set only |
 
 A test lives with the code it tests, so a package stays testable on its own. Only the tests
@@ -58,7 +58,7 @@ time; and it is a Qt application. The fake robot node answers all three.
 | --- | --- | --- |
 | The robot movement | yes | yes |
 | The laser scan and the obstacle events | yes | no |
-| The time | simulated, controlled by the test | real |
+| The time | shortened by the parameters | real |
 | The display | not needed | the offscreen mode |
 | The number of tests | the bulk | a few smoke tests |
 | What it proves | the framework logic is correct | the shipped system runs |
@@ -71,7 +71,7 @@ time; and it is a Qt application. The fake robot node answers all three.
      (the velocity)     |       the fake robot      |       (the position)
                         |                           |
      /goal_pose   ----> |   the unicycle model on   | ----> /scan
-     (the target)       |     the simulated time    |       (the laser scan)
+     (the target)       |     a unicycle model      |       (the laser scan)
                         |                           |
      the scan     ----> |                           |
      script             +---------------------------+
@@ -95,24 +95,32 @@ test, never its subject.
 
 ## 4. The Time
 
-Tested against the wall clock, the tick timers of the API modules make the suite slow and flaky.
-The integration tier therefore runs with `use_sim_time` and a `/clock` topic the harness
-publishes itself. A test moves the time forward instead of waiting for it:
+Tested against the wall clock as it ships, the tick timers of the API modules would make the
+suite slow: a diagram waiting for the one minute tick would cost a minute. The periods are
+parameters of the nodes, so every tier shortens them instead:
 
 ```
-    the test                        the nodes
-    --------                        ---------
-    clock.advance(60.0)     --->    /clock
-                                    the one minute tick timer fires
-    probe.wait_for(TICK_1M) <---    /hsm_ros_msg
+    tick_period 0.02   second_period 0.05   minute_period 0.1
+    control_period 0.02   scan_period 0.05
 ```
 
-The turtlesim simulator has no simulated time, so the system tier runs on the wall clock, bounds
-every test with a timeout and keeps the checked timings coarse.
+The minute tick is then checked in a tenth of a second, and the node and the integration tiers
+together finish in under a minute of real time.
+
+The simulated time of ROS2 was measured for this and not taken: it costs more than it buys here.
+The deadlines a test waits on run off the node clock and freeze with it; the `/clock` topic is
+best effort and one deep, so a node which starts late misses it; and a single step of a minute
+fires a periodic timer once rather than sixty times, so a minute has to be stepped six hundred
+times. The parameters give the same determinism for none of that.
+
+Each launch description of the integration tier runs in a ROS2 domain of its own. The
+descriptions of a tier run one after another in the same session, and the nodes of the previous
+one are not always gone when the next starts - two robots publishing the odometry make the events
+of the modules meaningless. It also keeps a graph the developer is running out of the tests.
 
 ## 5. The Test Utilities
 
-`hsm_tests/test_utils` is the shared vocabulary of the L2 and L3 tests, so that a test states
+`hsm_test_utils` is the shared vocabulary of the L2 and L3 tests, so that a test states
 what it checks rather than how it spins an executor:
 
 * **the event probe** - subscribes `/hsm_ros_msg` and `/hsm_ros_str_msg`, waits for a message
@@ -121,9 +129,9 @@ what it checks rather than how it spins an executor:
 * **the topic recorders** - the same for an arbitrary topic, to check what a node publishes;
 * **the service probes** - fake service servers recording the requests, so the caller objects can
   be tested with no module node running;
-* **the simulated clock** - the `/clock` publisher of section 4;
-* **the fixtures** - the ROS2 context and executor around a test, and the isolation of the
-  `Storage` directory, so the tests never write into the storage of the developer.
+* **the context** - the ROS2 context, the executor and the isolated domain around a test, and
+  the isolation of the `Storage` directory, so the tests never write into the storage of the
+  developer.
 
 ## 6. Testing the Code Generator
 

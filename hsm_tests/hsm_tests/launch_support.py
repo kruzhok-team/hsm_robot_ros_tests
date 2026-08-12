@@ -38,7 +38,7 @@ import sys
 import tempfile
 
 from ament_index_python.packages import get_package_share_directory
-from launch.actions import ExecuteProcess
+from launch.actions import ExecuteProcess, TimerAction
 from launch_ros.actions import Node
 
 # the module nodes of the API and the executables which start them
@@ -133,11 +133,19 @@ def controller(directory, module, domain, **parameters):
         additional_env=environment, output='screen')
 
 
+# the controller is started after the rest of the framework, the way a robot is started
+# before the program which drives it. The modules publish a velocity only when the
+# diagram calls them, so a command given before the robot is listening is lost and the
+# robot never moves - a diagram waiting for the movement to end then waits forever
+CONTROLLER_DELAY = 3.0
+
+
 def framework(diagram_name, domain, **parameters):
     # everything a diagram needs to run: the API, the robot and the controller, in a
     # domain of their own
     directory, module = generate_controller(diagram(diagram_name))
     actions = api_nodes(domain, **parameters)
     actions.append(fake_robot(domain, **parameters))
-    actions.append(controller(directory, module, domain, **parameters))
+    actions.append(TimerAction(period=CONTROLLER_DELAY,
+                               actions=[controller(directory, module, domain, **parameters)]))
     return actions, directory

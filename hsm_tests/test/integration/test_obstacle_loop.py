@@ -34,7 +34,7 @@ import pytest
 import rclpy
 from launch import LaunchDescription
 
-from geometry_msgs.msg import Twist
+from nav_msgs.msg import Odometry
 from std_msgs.msg import Float64MultiArray
 
 from hsm_interfaces.msg import SimpleMessage
@@ -55,12 +55,19 @@ DOMAIN = 92
 COLLISION_RANGE = 0.15
 OBSTACLE_RANGE = 0.45
 OPEN_SPACE_RANGE = 0.5
+# closer than the open space range, so the right hand rule sees a wall and not a turn
+WALL_ON_THE_RIGHT = 0.2
 
 
 @pytest.mark.launch_test
 def generate_test_description():
     use_domain(DOMAIN)
-    actions, directory = framework('right_hand_maze_solver', DOMAIN)
+    # the robot starts with the wall on its right already: the scan of the robot is
+    # free on every side by default, so the diagram of the right hand rule would be
+    # turning from the moment it starts and would not be driving when the test places
+    # the obstacle
+    actions, directory = framework('right_hand_maze_solver', DOMAIN,
+                                   scan_forward=10.0, scan_right=WALL_ON_THE_RIGHT)
     generate_test_description.directory = directory
     return LaunchDescription(actions + [launch_testing.actions.ReadyToTest()])
 
@@ -77,7 +84,10 @@ class TestObstacleLoop(unittest.TestCase):
     def setUpClass(cls):
         rclpy.init()
         cls.probe = Probe(name='hsm_obstacle_loop_probe')
-        cls.twists = cls.probe.record('/cmd_vel', Twist)
+        # the wheels module publishes a velocity only when the diagram calls it, so a
+        # command given while the controller was starting is gone before a test can
+        # see it. The odometry of the robot is continuous and says what it is doing
+        cls.odometry = cls.probe.record('/odom', Odometry)
 
     @classmethod
     def tearDownClass(cls):
@@ -94,15 +104,19 @@ class TestObstacleLoop(unittest.TestCase):
         # machine leaves the driving state and its exit stops the wheels, and the wheels
         # module reports the stopping back to the diagram.
         # This is the only case of its launch description, so the diagram is untouched
-        self.place(forward=10.0, right=10.0)
-        assert self.probe.wait_for(lambda: any(t.linear.x > 0.0 for t in self.twists),
-                                   timeout=STARTUP), \
-            'the diagram never commanded the wheels to drive'
+        # the way ahead is free and the wall on the right is close: the diagram of the
+        # right hand rule then has nothing to react to and drives straight on. With a
+        # free space on the right as well it keeps turning, and the obstacle would arrive
+        # while the diagram is in a state which does not answer it
+        assert self.probe.wait_for(
+            lambda: any(o.twist.twist.linear.x > 0.0 for o in self.odometry[-10:]),
+            timeout=STARTUP), 'the diagram never set the robot moving'
         # what happened before the obstacle appeared is counted, so the events which
         # follow are the answer to it and not something the diagram did earlier
         warnings = self.probe.count_events(COLLISION_WARNING)
         stops = self.probe.count_events(STOP_COMPLETED)
-        self.place(forward=(COLLISION_RANGE + OBSTACLE_RANGE) / 2.0, right=10.0)
+        self.place(forward=(COLLISION_RANGE + OBSTACLE_RANGE) / 2.0,
+                   right=WALL_ON_THE_RIGHT)
         assert self.probe.wait_for(
             lambda: self.probe.count_events(COLLISION_WARNING) > warnings,
             timeout=STARTUP), 'the obstacle was not reported to the diagram'

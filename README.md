@@ -13,6 +13,7 @@ The code is distributed under the GNU General Public License (version 3).
 ## Documentation
 
 * The HSM Robot testing architecture - `docs/hsm_robot_testing.md`
+* How to write an integration test - `docs/howto_write_a_test.md`
 
 ## The Project Content
 

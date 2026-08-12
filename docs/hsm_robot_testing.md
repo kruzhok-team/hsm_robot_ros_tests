@@ -63,6 +63,8 @@ time; and it is a Qt application. The fake robot node answers all three.
 | The number of tests | the bulk | a few smoke tests |
 | What it proves | the framework logic is correct | the shipped system runs |
 
+The recipe for a test which uses it is in `howto_write_a_test.md`.
+
 ## 3. The Fake Robot Contract
 
 ```

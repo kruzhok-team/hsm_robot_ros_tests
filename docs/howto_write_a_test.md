@@ -30,7 +30,7 @@ from hsm_tests.launch_support import framework, use_domain
 from hsm_test_utils import Probe
 
 STARTUP = 60.0
-# a domain of this file's own; 91, 93, 94 and 96 are taken
+# a domain of this file's own; 91, 93, 94 and 96 are taken, and 101-103 by the system tier
 DOMAIN = 95
 
 
@@ -151,7 +151,42 @@ where the process supervision of launch reports nothing. If a case is about how 
 process starts, start it yourself with `subprocess` and read its output -
 `test_missing_module.py` does exactly that and needs no launch description at all.
 
-## 6. Running it
+## 6. A test on the real simulator
+
+A test in `hsm_tests/test/system/` is the same file with `system_framework` in the place of
+`framework`: turtlesim and the turtle driver run instead of the fake robot, and the marker comes
+from the directory the file is in.
+
+```python
+actions, directory = system_framework('turtle-square', DOMAIN)
+```
+
+Three things are different, and all three follow from the simulator being real.
+
+**Do not shorten anything.** `system_framework` shortens the startup handshake and nothing else,
+on purpose. The fake robot has a clock made of parameters; the simulator moves the turtle at the
+speed the driver asks for, so the only thing a parameter changes is that speed - the behaviour
+the tier is checking. A square takes twenty seconds and that is the price.
+
+**Assert on `/turtle1/pose`, not on `/odom`.** The pose is what the simulator computed, and the
+odometry is the driver's copy of it. Watching the copy tests the driver twice and the simulator
+never.
+
+```python
+from turtlesim.msg import Pose
+cls.poses = cls.probe.record('/turtle1/pose', Pose)
+```
+
+**Mind the walls.** The world is 11.089 units across and the turtle is held at the edge, so a
+diagram can look correct while its trajectory is nonsense. Driving faster than the framework
+ships does exactly this: the turn rate is capped, so the turtle leaves the square as an arc.
+Assert the turtle stayed inside, and do not retune the speed to make a test quicker.
+
+To build the package the way a user does rather than running it from a directory, use
+`build_controller`, `installed_executables` and `installed_controller` -
+`test_documented_workflow.py` is the worked example.
+
+## 7. Running it
 
 ```
 colcon build && colcon test --packages-select hsm_tests

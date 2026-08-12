@@ -39,7 +39,7 @@ window.**
 | L1 | the generated code, the state machine behaviour, the diagram validation | `hsm_robot_ros_generator/test` | no robot, no simulator |
 | L2 | the ROS2 contract of one node | `hsm_robot_ros_api/test`, `turtle_driver/test` | never starts a second framework node |
 | L3 | the HSM state sequence, the API calls, the events | `hsm_robot_ros_tests/hsm_tests/test/integration` | a domain of its own, no display |
-| L4 | the trajectory, the event order, the final position | `hsm_robot_ros_tests/test/system` | real time, a smoke set only |
+| L4 | the trajectory, the event order, the packaging | `hsm_robot_ros_tests/hsm_tests/test/system` | real time, a smoke set only |
 
 A test lives with the code it tests, so a package stays testable on its own. Only the tests
 needing several packages at once live in the testing project.
@@ -95,11 +95,51 @@ it.** A test reaches the robot only through the ROS2 objects of the robot API, s
 behaviour can be checked on both backends. The scan script and the teleport are the setup of a
 test, never its subject.
 
-## 4. The Time
+## 4. The System Tier
+
+The system tier runs what the framework ships and nothing else: the simulator, the driver which
+adapts it to the API, the module nodes, and a controller generated from a diagram. Nothing
+written for the tests stands between the diagram and the turtle.
+
+```
+    a diagram --> the generator --> a package --> colcon --> the controller
+                                                                  |
+                        the module nodes of the API <-------------+
+                                    |
+                            the turtle driver --> turtlesim (offscreen)
+```
+
+Three things belong to this tier and to no other:
+
+* **the position the simulator reports.** The integration tier believes the odometry, and the
+  odometry comes from the same fake robot which decides where the robot is. Here the position is
+  computed by the simulator and the odometry of the driver is a copy of it, so `/turtle1/pose` is
+  a ground truth an assertion can stand on;
+* **the world has walls.** turtlesim is eleven units across and holds the turtle at the edge, so
+  a diagram can look correct while its trajectory is nonsense. The tier asserts the turtle stays
+  inside, which is the only check that says the speeds of the framework suit the world it drives
+  in;
+* **the packaging.** Every other tier runs the generated controller out of the directory it was
+  generated into, because a generated package is always named `hsm_controller` and a workspace
+  holds one of those at a time. A user instead generates into a workspace, builds it and runs the
+  installed executable, and that half of the workflow is otherwise never exercised. One test
+  pays for it - it builds, which costs a second and a half - and it starts the simulator through
+  the launch file which ships with the driver rather than through a description written for the
+  tests.
+
+**The tier does not shorten anything but the startup handshake.** The integration tier can
+shorten the clock because the clock of the fake robot is a parameter; the simulator moves the
+turtle at the speed the driver asks for, and the only thing a parameter could change is that
+speed - which is the behaviour the tier exists to check. Driving the turtle faster than the
+framework ships also takes it out of the world: it is asked to turn no faster than it turns, so
+a fast enough turtle leaves the square as an arc and is stopped by the wall. A square takes the
+twenty seconds a square takes, and the whole tier costs about a minute.
+
+## 5. The Time
 
 Tested against the wall clock as it ships, the tick timers of the API modules would make the
 suite slow: a diagram waiting for the one minute tick would cost a minute. The periods are
-parameters of the nodes, so every tier shortens them instead:
+parameters of the nodes, so the node and integration tiers shorten them:
 
 ```
     tick_period 0.02   second_period 0.05   minute_period 0.1
@@ -115,14 +155,16 @@ best effort and one deep, so a node which starts late misses it; and a single st
 fires a periodic timer once rather than sixty times, so a minute has to be stepped six hundred
 times. The parameters give the same determinism for none of that.
 
-Each launch description of the integration tier runs in a ROS2 domain of its own. The
+Each launch description of the integration and system tiers runs in a ROS2 domain of its own. The
 descriptions of a tier run one after another in the same session, and the nodes of the previous
 one are not always gone when the next starts - two robots publishing the odometry make the events
-of the modules meaningless. It also keeps a graph the developer is running out of the tests.
+of the modules meaningless. It also keeps a graph the developer is running out of the tests, and
+it matters more at the system tier, where the simulator owns the `turtle1` names of the whole
+graph and a turtlesim left running by the developer would join a test silently.
 
-## 5. The Test Utilities
+## 6. The Test Utilities
 
-`hsm_test_utils` is the shared vocabulary of the L2 and L3 tests, so that a test states
+`hsm_test_utils` is the shared vocabulary of the L2, L3 and L4 tests, so that a test states
 what it checks rather than how it spins an executor:
 
 * **the event probe** - subscribes `/hsm_ros_msg` and `/hsm_ros_str_msg`, waits for a message
@@ -135,7 +177,7 @@ what it checks rather than how it spins an executor:
   the isolation of the `Storage` directory, so the tests never write into the storage of the
   developer.
 
-## 6. Testing the Code Generator
+## 7. Testing the Code Generator
 
 Three independent properties, because each fails differently:
 
@@ -155,10 +197,16 @@ Three independent properties, because each fails differently:
 The tests always generate into a temporary directory: the generator writes a whole package into
 the directory given by `-o`.
 
-## 7. Running the Tests
+## 8. Running the Tests
 
 The environment is headless - the system tier sets the offscreen Qt platform itself, so no test
-needs a display or depends on the shell of the developer.
+needs a display or depends on the shell of the developer. The launch file which ships with the
+driver takes a `headless` argument for the same reason, so the simulator a user starts can run
+without a display too:
+
+```
+ros2 launch turtle_driver start.launch.py headless:=true
+```
 
 ```
 colcon test && colcon test-result --verbose        # everything
@@ -175,9 +223,13 @@ The environment is also built as a container image - the reference environment o
 and the one the continuous integration uses. Its package list is described in
 `docs/hsm-ros2-testing-environment.md`.
 
-## 8. The Known Gaps
+## 9. The Known Gaps
 
 * **The laser scan events are tested on the fake robot only.** turtlesim cannot publish the scan,
   so on a real robot platform that branch is exercised for the first time on the platform itself.
 * **The system tier checks the robot behaviour coarsely** - the declared points in the declared
-  order, not the precise trajectory between them.
+  order and the world the turtle stayed inside, not the precise trajectory between them.
+* **One system test builds, the others do not.** The packaging is proven once; a break which only
+  appears for a particular diagram would not be seen.
+* **The system tier drives two diagrams**, the ones the framework supports today. The diagrams
+  which need a module method that is not implemented yet cannot be driven by any tier.

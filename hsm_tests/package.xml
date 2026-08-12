@@ -11,6 +11,7 @@
   <!-- the integration and the system tiers run the nodes of the framework -->
   <exec_depend>hsm_robot</exec_depend>
   <exec_depend>turtle_driver</exec_depend>
+  <exec_depend>turtlesim</exec_depend>
   <exec_depend>rclpy</exec_depend>
   <exec_depend>geometry_msgs</exec_depend>
   <exec_depend>nav_msgs</exec_depend>

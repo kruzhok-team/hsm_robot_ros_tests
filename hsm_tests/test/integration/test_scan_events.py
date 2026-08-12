@@ -24,7 +24,7 @@
 # The turtlesim simulator publishes no laser scan at all, so these events are unreachable
 # in the system tier, and the node tier has no robot to produce a scan from a distance.
 # The events follow the scan whatever the diagram is doing, so the cases here are
-# independent of one another.
+# independent of one another and of the diagram which happens to be running.
 
 import shutil
 import unittest
@@ -60,7 +60,10 @@ OPEN_SPACE_RANGE = 0.5
 @pytest.mark.launch_test
 def generate_test_description():
     use_domain(DOMAIN)
-    actions, directory = framework('right_hand_maze_solver', DOMAIN)
+    # the events belong to the navigation module and not to the diagram, so the
+    # description runs the diagram which drives with that module
+    actions, directory = framework('turtle-square', DOMAIN,
+                                   goal_tolerance=0.3, arrival_tolerance=0.05)
     generate_test_description.directory = directory
     return LaunchDescription(actions + [launch_testing.actions.ReadyToTest()])
 

@@ -6,9 +6,6 @@
 # test tier. It implements the same ROS2 contract as the turtle driver, adding
 # the scriptable laser scan the turtlesim simulator cannot provide.
 #
-# The module is a placeholder: the node contract is described in
-# docs/hsm_robot_testing.md and is implemented in a separate step.
-#
 # Copyright (C) 2026 Alexey Fedoseev <aleksey@fedoseev.net>
 #
 # This program is free software; you can redistribute it and/or

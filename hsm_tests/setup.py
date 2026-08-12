@@ -24,6 +24,7 @@ setup(
     },
     entry_points={
         'console_scripts': [
+            'fake_robot = hsm_tests.fake_robot.fake_robot:main',
         ],
     },
 )

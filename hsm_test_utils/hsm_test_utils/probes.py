@@ -78,8 +78,14 @@ class Probe(rclpy.node.Node):
             self.__publishers[topic] = self.create_publisher(message_type, topic, MSG_QUEUE_LEN)
         return self.__publishers[topic]
 
-    def publish(self, topic, message):
-        self.publisher(topic, type(message)).publish(message)
+    def publish(self, topic, message, wait_for_listener=True):
+        publisher = self.publisher(topic, type(message))
+        # a publisher which has just been created is not connected to the subscriptions
+        # yet, and its first message is dropped. The nodes of the integration tests are
+        # separate processes, so the discovery takes long enough for this to matter
+        if wait_for_listener:
+            self.wait_for(lambda: publisher.get_subscription_count() > 0, DEFAULT_TIMEOUT)
+        publisher.publish(message)
         # let the node under test process the message before the test asserts on it
         self.spin(SPIN_STEP * 3)
 

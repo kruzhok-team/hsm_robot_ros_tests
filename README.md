@@ -13,18 +13,20 @@ The code is distributed under the GNU General Public License (version 3).
 ## Documentation
 
 * The HSM Robot testing architecture - `docs/hsm_robot_testing.md`
-* How to write an integration test - `docs/howto_write_a_test.md`
+* How to write a test, for every tier - `docs/howto_write_a_test.md`
 
 ## The Project Content
 
-* `hsm_tests/test_utils` - the event probe, the topic recorders, the service probes, the
-  simulated clock and the pytest fixtures;
-* `hsm_tests/fake_robot` - the deterministic simulation backend;
-* `test/integration` - the integration tests (the L3 tier);
-* `test/system` - the system tests (the L4 tier).
+The repository holds two ROS2 packages:
 
-These four directories are the placeholders of the current version: the testing architecture is
-defined, the code is added step by step.
+* `hsm_test_utils` - the probe and the pytest fixtures shared by the L2, L3 and L4 tiers. It
+  is a package of its own so that the packages it helps test can depend on it without a cycle:
+  it names nothing of the framework but the interfaces;
+* `hsm_tests` - the suite:
+  * `hsm_tests/fake_robot` - the deterministic simulation backend;
+  * `hsm_tests/launch_support.py` - the launch descriptions of the two upper tiers;
+  * `test/integration` - the integration tests (the L3 tier);
+  * `test/system` - the system tests (the L4 tier).
 
 ## Requirements
 
@@ -37,8 +39,16 @@ defined, the code is added step by step.
 ## Running the Tests
 
 ```
-colcon test --packages-select hsm_tests
+colcon test --packages-select hsm_tests hsm_test_utils
 colcon test-result --verbose
 ```
 
-See `docs/hsm_robot_testing.md` for the separate test tiers.
+One tier at a time, by its marker:
+
+```
+colcon test --packages-select hsm_tests --pytest-args -m integration    # L3
+colcon test --packages-select hsm_tests --pytest-args -m system         # L4
+```
+
+See `docs/hsm_robot_testing.md` for the tiers of the whole framework, and
+`docs/howto_write_a_test.md` for how to add a test to any of them.

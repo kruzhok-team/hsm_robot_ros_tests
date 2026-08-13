@@ -33,13 +33,16 @@ window.**
   L0  STATIC     the coding style                   no ROS2 runtime
 ```
 
-| | checks | lives in | rule |
-| --- | --- | --- | --- |
-| L0 | `ament_flake8`, `ament_pep257` | every package | - |
-| L1 | the generated code, the state machine behaviour, the diagram validation | `hsm_robot_ros_generator/test` | no robot, no simulator |
-| L2 | the ROS2 contract of one node | `hsm_robot_ros_api/test`, `turtle_driver/test` | never starts a second framework node |
-| L3 | the HSM state sequence, the API calls, the events | `hsm_robot_ros_tests/hsm_tests/test/integration` | a domain of its own, no display |
-| L4 | the trajectory, the event order, the packaging | `hsm_robot_ros_tests/hsm_tests/test/system` | real time, a smoke set only |
+| | checks | lives in | marker | rule |
+| --- | --- | --- | --- | --- |
+| L0 | `ament_flake8`, `ament_pep257` | every package | `linter` | - |
+| L1 | the generated code, the state machine behaviour, the diagram validation | `hsm_robot_ros_generator/test` | `unit` | no robot, no simulator |
+| L2 | the ROS2 contract of one node | `hsm_robot_ros_api/test`, `turtle_driver/test` | `node` | never starts a second framework node |
+| L3 | the HSM state sequence, the API calls, the events | `hsm_robot_ros_tests/hsm_tests/test/integration` | `integration` | a domain of its own, no display |
+| L4 | the trajectory, the event order, the packaging | `hsm_robot_ros_tests/hsm_tests/test/system` | `system` | real time, a smoke set only |
+
+Every tier is selected by its own marker, so a tier can be run alone; the commands are in §8.
+How to add a test to any of them is in `howto_write_a_test.md`.
 
 A test lives with the code it tests, so a package stays testable on its own. Only the tests
 needing several packages at once live in the testing project.
@@ -167,15 +170,16 @@ graph and a turtlesim left running by the developer would join a test silently.
 `hsm_test_utils` is the shared vocabulary of the L2, L3 and L4 tests, so that a test states
 what it checks rather than how it spins an executor:
 
-* **the event probe** - subscribes `/hsm_ros_msg` and `/hsm_ros_str_msg`, waits for a message
-  code, reads a string argument, checks an event sequence. The main instrument of L2 and L3: the
-  events are the only thing the API modules report;
-* **the topic recorders** - the same for an arbitrary topic, to check what a node publishes;
-* **the service probes** - fake service servers recording the requests, so the caller objects can
-  be tested with no module node running;
-* **the context** - the ROS2 context, the executor and the isolated domain around a test, and
-  the isolation of the `Storage` directory, so the tests never write into the storage of the
-  developer.
+* **the probe** (`probes.py`) - one node which subscribes `/hsm_ros_msg` and `/hsm_ros_str_msg`
+  and waits for a message code, records an arbitrary topic, publishes into one, and calls a
+  service. The main instrument of the three tiers: the events are the only thing the API modules
+  report;
+* **the context** (`context.py`) - the ROS2 context, the executor and the isolated domain around
+  a test (`node_factory`, `isolated_domain`), the parameter overrides a node can only be given
+  through `rclpy.init`, and the isolation of the `Storage` directory, so the tests never write
+  into the storage of the developer.
+
+The recipe for using them is §4 of `howto_write_a_test.md`.
 
 ## 7. Testing the Code Generator
 
@@ -212,9 +216,8 @@ ros2 launch turtle_driver start.launch.py headless:=true
 colcon test && colcon test-result --verbose        # everything
 
 colcon test --pytest-args -m linter                                        # L0
-colcon test --packages-select hsm_generator --pytest-args -m "not linter"  # L1
-colcon test --packages-select hsm_robot turtle_driver \
-            --pytest-args -m "not linter"                                  # L2
+colcon test --packages-select hsm_generator --pytest-args -m unit          # L1
+colcon test --packages-select hsm_robot turtle_driver --pytest-args -m node  # L2
 colcon test --packages-select hsm_tests --pytest-args -m integration       # L3
 colcon test --packages-select hsm_tests --pytest-args -m system            # L4
 ```

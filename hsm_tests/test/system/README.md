@@ -14,8 +14,9 @@ and the world it is asserted in has walls.
 | `test_turtle_square.py` | the navigation loop: the diagram sends the turtle around four corners, and the turtle stays inside the world |
 | `test_turtle_square_wheels.py` | the wheels loop: a speed and a timer instead of a goal, and the stop which only comes back because the driver copies the speed of the turtle |
 | `test_documented_workflow.py` | the workflow a user follows: generate into a workspace, build it, run the installed executable, and start the simulator through the launch file which ships with the driver |
+| `test_save_and_replay.py` | the two storage diagrams as two halves of one job: one saves the path of the turtle, the other drives it again |
 
-The tier runs in real time and is therefore small and slow - about a minute for the three. It
+The tier runs in real time and is therefore small and slow - about two minutes for the four. It
 shortens nothing but the startup handshake: the clock of the tier is the simulator, and the only
 thing a parameter could change is the speed of the turtle, which is the behaviour being checked.
 

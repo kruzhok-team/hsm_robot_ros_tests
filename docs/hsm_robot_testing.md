@@ -234,5 +234,5 @@ and the one the continuous integration uses. Its package list is described in
   order and the world the turtle stayed inside, not the precise trajectory between them.
 * **One system test builds, the others do not.** The packaging is proven once; a break which only
   appears for a particular diagram would not be seen.
-* **The system tier drives two diagrams**, the ones the framework supports today. The diagrams
+* **The system tier drives four diagrams**, the ones the framework supports today. The diagrams
   which need a module method that is not implemented yet cannot be driven by any tier.

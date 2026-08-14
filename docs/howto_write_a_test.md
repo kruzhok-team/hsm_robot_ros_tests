@@ -240,8 +240,9 @@ from hsm_tests.launch_support import framework, use_domain
 from hsm_test_utils import Probe
 
 STARTUP = 60.0
-# a domain of this file's own; 91, 93, 94 and 96 are taken, and 101-103 by the system tier
-DOMAIN = 95
+# a domain of this file's own; 91, 93, 94, 95 and 96 are taken, and 101-104 by the
+# system tier
+DOMAIN = 92
 
 
 @pytest.mark.launch_test
@@ -279,7 +280,11 @@ class TestSomething(unittest.TestCase):
 directory and returns the launch actions plus that directory, which `tearDownClass`
 removes. Any keyword is passed to every node as a parameter, so this is where a test
 shortens a period or retunes a tolerance. Only the diagrams the framework supports today
-are worth driving: **turtle-square** and **turtle-square-wheels**.
+are worth driving: **turtle-square**, **turtle-square-wheels**, **move-along-traj** and
+**save-path**. The last two read and write a storage, so a test of them passes
+`storage_path` as well - the module then writes into the directory of the test instead of
+the storage of the developer, and a test which needs a route to start from writes the JSON
+file itself, as `test_trajectory_loop.py` does.
 
 The probe is the one described in §4; here it is built directly rather than by the node
 factory, because the nodes are separate processes and the probe is the only one in this
@@ -381,6 +386,13 @@ cls.poses = cls.probe.record('/turtle1/pose', Pose)
 diagram can look correct while its trajectory is nonsense. Driving faster than the framework
 ships does exactly this: the turn rate is capped, so the turtle leaves the square as an arc.
 Assert the turtle stayed inside, and do not retune the speed to make a test quicker.
+
+**Two diagrams in one scenario** do not fit `system_framework`, which generates one. Build the
+description from the pieces it is made of - `generate_controller`, `api_nodes`, `turtlesim`,
+`driver` and `controller` - and start the second controller with a `TimerAction` of its own,
+after the first one has done its half of the job. `test_save_and_replay.py` is the worked
+example: one diagram records the path of the turtle and the other drives it again, and what
+joins them is a file on the disk.
 
 To build the package the way a user does rather than running it from a directory, use
 `build_controller`, `installed_executables` and `installed_controller` -

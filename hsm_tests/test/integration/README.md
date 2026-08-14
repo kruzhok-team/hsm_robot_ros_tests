@@ -15,6 +15,7 @@ simulator does not publish the `/scan` topic.
 | | |
 | --- | --- |
 | `test_navigation_loop.py` | the diagram sends the robot around four corners and moves on after every arrival |
+| `test_trajectory_loop.py` | a whole route handed to the navigation module in one call, travelled point by point |
 | `test_scan_events.py` | the obstacle events, placed at the thresholds the navigation module compares against |
 | `test_timer_loop.py` | the wheels and the timer driving the diagram instead of a goal |
 | `test_missing_module.py` | a controller started without its module nodes reports and gives up |

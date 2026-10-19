@@ -216,6 +216,11 @@ nodes of the API and the fake robot run as separate processes, and the test watc
 from the outside. Use it to check that something reaches the robot and comes back - an API
 call, an event, a state change.
 
+To see a diagram reach its events once, a test file is not needed: write the expected
+events into the diagram's `ros2 hsm test` comment and run `ros2 run hsm_tests
+hsm_robot_test <diagram>` (`hsm_robot_testing.md` §10), or the `test` action of the editor
+plugin. A test file is for what has to keep working.
+
 ### The file
 
 One file per scenario in `hsm_tests/test/integration/`, named `test_<what it checks>.py`.
@@ -240,8 +245,8 @@ from hsm_tests.launch_support import framework, use_domain
 from hsm_test_utils import Probe
 
 STARTUP = 60.0
-# a domain of this file's own; 91, 93, 94, 95 and 96 are taken, and 101-104 by the
-# system tier
+# a domain of this file's own; 91 and 93-98 are taken, 101-104 by the system tier and
+# 150-199 by the diagram test runner
 DOMAIN = 92
 
 

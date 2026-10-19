@@ -236,3 +236,47 @@ and the one the continuous integration uses. Its package list is described in
   appears for a particular diagram would not be seen.
 * **The system tier drives four diagrams**, the ones the framework supports today. The diagrams
   which need a module method that is not implemented yet cannot be driven by any tier.
+
+## 10. The Diagram Test Runner
+
+The L3 framework without pytest: `hsm_robot_test` runs one diagram against the fake robot
+and checks the expectations the diagram itself declares. It is what the `test` action of the
+CyberiadaPro plugin (`hsm_robot_ros_generator/docs/editor_plugin.md`) runs.
+
+```
+ hsm_robot_test diagram.graphml
+   │ 1 generate the controller           launch_support.generate_controller, a tmp dir
+   │ 2 start the 6 API nodes + fake robot   ┐ one session each, a random domain 150-199
+   │ 3 start the controller after 3 s       ┘ FAST_PARAMETERS unless --real-time
+   │ 4 record /hsm_ros_msg, /hsm_ros_str_msg, /odom        Probe of hsm_test_utils
+   │ 5 stop: every positive rule holds | the duration | the controller ends | SIGTERM
+   ▼
+ stdout: the timeline, the controller output, a line per rule     --json: diagnostics
+```
+
+```
+ros2 run hsm_tests hsm_robot_test DIAGRAM [--duration S] [--pose X Y THETA]
+    [--scan FORWARD RIGHT ELSEWHERE] [--real-time] [--domain N] [--json FILE] [--verbose]
+```
+
+The expectations are the lines of the diagram's `ros2 hsm test` comment, parsed by the
+generator (`gencode.parse_test_rules`):
+
+| line | holds when |
+|---|---|
+| `EVENT [xN] [within S]` | `EVENT` is reported at least `N` times within `S` s of the controller start |
+| `never EVENT` | `EVENT` is not reported while the run lasts |
+
+Without the comment the run is a smoke run: the controller must survive the duration or end
+with 0. The timer ticks are counted but left out of the timeline.
+
+| exit | meaning | diagnostics |
+|---|---|---|
+| 0 | passed | `[]` |
+| 1 | a rule failed, the controller ended with an error, or the diagram is rejected | `test-failed` on the comment, `test-controller`, or the generator's finding |
+| 2 | a usage error | - |
+| 4 | a node of the framework failed to start | - |
+
+Every process is started in a session of its own; the end of the run, SIGTERM and SIGINT
+stop each session (SIGTERM, SIGKILL after 3 s) and remove the temporary directory, so a
+cancelled run leaves no node behind in the domain.

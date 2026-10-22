@@ -79,10 +79,14 @@ def arguments():
                         help='the run limit, s, from the controller start; 0: until cancelled')
     parser.add_argument('--pose', type=float, nargs=3, metavar=('X', 'Y', 'THETA'),
                         default=SPAWN, help='the start pose of the turtle')
+    parser.add_argument('--degrees', action='store_true',
+                        help='the THETA of the pose is in degrees, not radians')
     parser.add_argument('--headless', action='store_true',
                         help='run the simulator without its window')
     parser.add_argument('--trace', metavar='DIR', help='write the trace of the turtle here')
     parser.add_argument('--name', help='the base name of the trace files')
+    parser.add_argument('--image', choices=('true', 'false'), default='true',
+                        help='write the SVG picture of the trace besides the CSV')
     parser.add_argument('--domain', type=int, help='the ROS domain (a random one by default)')
     parser.add_argument('--verbose', action='store_true',
                         help='show the output of the API nodes, the simulator and the driver')
@@ -98,6 +102,8 @@ def arguments():
         parser.error('the workspace is required to run')
     if args.duration < 0:
         parser.error('the duration cannot be negative')
+    if args.degrees:
+        args.pose = (args.pose[0], args.pose[1], math.radians(args.pose[2]))
     if not turtle_rules.inside(*args.pose[:2]):
         parser.error('the start pose is outside the turtle world 0..{:.2f}'.format(
             turtle_rules.WORLD_SIZE))
@@ -145,8 +151,10 @@ def write_trace(args, trace, output):
         return
     name = args.name or os.path.splitext(os.path.basename(args.diagram))[0] or TRACE_NAME
     os.makedirs(args.trace, exist_ok=True)
-    for extension, text in (('csv', turtle_trace.csv(trace.points)),
-                            ('svg', turtle_trace.svg(trace.points, name))):
+    files = [('csv', turtle_trace.csv(trace.points))]
+    if args.image == 'true':
+        files.append(('svg', turtle_trace.svg(trace.points, name)))
+    for extension, text in files:
         path = os.path.join(args.trace, '{}.{}'.format(name, extension))
         with open(path, 'w', encoding='utf-8') as out:
             out.write(text)

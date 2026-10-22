@@ -22,6 +22,7 @@
 # -----------------------------------------------------------------------------
 
 import math
+import os
 import types
 
 import gencode
@@ -120,3 +121,26 @@ def test_csv_and_svg():
     assert '<title>a&lt;b</title>' in picture
     assert picture.count('<polygon') == 1
     assert '<polyline' not in turtle_trace.svg([], 'empty')
+
+
+def parsed(monkeypatch, *arguments):
+    from hsm_tests import turtle_run
+    monkeypatch.setattr('sys.argv', ['hsm_turtle_run', 'd.graphml', '--workspace', 'ws']
+                        + list(arguments))
+    return turtle_run.arguments()
+
+
+def test_heading_in_degrees(monkeypatch):
+    assert parsed(monkeypatch, '--pose', '2', '3', '90', '--degrees').pose == \
+        pytest.approx((2.0, 3.0, math.pi / 2))
+    assert parsed(monkeypatch, '--pose', '2', '3', '1.5').pose[2] == 1.5
+
+
+@pytest.mark.parametrize('image, files', [('true', ['d.csv', 'd.svg']), ('false', ['d.csv'])])
+def test_trace_image_is_optional(monkeypatch, tmp_path, image, files):
+    from hsm_tests import turtle_run
+    args = parsed(monkeypatch, '--trace', str(tmp_path), '--image', image)
+    trace = turtle_trace.Trace()
+    trace.points = [(0.0, 1.0, 1.0, 0.0)]
+    turtle_run.write_trace(args, trace, types.SimpleNamespace(line=lambda text: None))
+    assert sorted(os.listdir(str(tmp_path))) == files

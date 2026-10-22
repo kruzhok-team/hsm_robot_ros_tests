@@ -308,7 +308,8 @@ with turtlesim and the turtle driver in the place of the fake robot.
 ```
 ros2 run hsm_tests hsm_turtle_run DIAGRAM --check [--json FILE]
 ros2 run hsm_tests hsm_turtle_run DIAGRAM --workspace WS [--trace DIR] [--name NAME]
-    [--duration S] [--pose X Y THETA] [--headless] [--domain N] [--verbose]
+    [--duration S] [--pose X Y THETA] [--degrees] [--image true|false] [--headless]
+    [--domain N] [--verbose]
 ros2 run hsm_tests hsm_turtle_run --install-editor-plugin [DIR]
 ```
 
@@ -323,7 +324,8 @@ ros2 run hsm_tests hsm_turtle_run --install-editor-plugin [DIR]
 
 The trace keeps a pose when the turtle has moved 2 cm or turned 0.05 rad; the SVG draws it over
 the world at the scale and colours of turtlesim, which has no service to capture its window.
-It is written however the run ends, a cancelled one included.
+It is written however the run ends, a cancelled one included; `--image false` writes the CSV
+only. `--degrees` takes the `THETA` of `--pose` in degrees, as the plugin passes it.
 
 | exit | meaning |
 |---|---|

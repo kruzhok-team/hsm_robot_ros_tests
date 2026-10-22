@@ -66,6 +66,7 @@ REPEAT_GAP = 1.0
 # the rclpy log line of an error: [ERROR] [time] [node]: message
 ERROR_MARK = '[ERROR]'
 ERROR_SEPARATOR = ']: '
+FAKE_ROBOT = (('hsm_tests', 'fake_robot'),)
 EVENT_NAMES = {code: name for events in gencode.HSM_EVENTS.values()
                for code, name in events.items()}
 
@@ -124,14 +125,20 @@ class Framework:
         self.__output.follow(process, name, shown)
         return process
 
-    def start_nodes(self, values, robot_values):
-        for package, executables, extra in (('hsm_robot', API_NODES, {}),
-                                            ('hsm_tests', ('fake_robot',), robot_values)):
-            for executable in executables:
-                program = os.path.join(get_package_prefix(package), 'lib', package, executable)
-                parameters = dict(values, **extra)
-                self.nodes.append((executable, self.__start(
-                    [program] + parameter_arguments(parameters), executable, self.__verbose)))
+    def environment(self):
+        # the environment of the nodes: the domain of the run
+        return dict(self.__environment)
+
+    def start_nodes(self, values, robot_values, robot=FAKE_ROBOT, robot_environment=None):
+        # the API nodes, then the nodes of the robot: (package, executable) pairs
+        nodes = [('hsm_robot', executable, values, None) for executable in API_NODES]
+        nodes += [(package, executable, dict(values, **robot_values), robot_environment)
+                  for package, executable in robot]
+        for package, executable, parameters, environment in nodes:
+            program = os.path.join(get_package_prefix(package), 'lib', package, executable)
+            self.nodes.append((executable, self.__start(
+                [program] + parameter_arguments(parameters), executable, self.__verbose,
+                environment)))
 
     def controller_environment(self, directory):
         environment = dict(self.__environment)

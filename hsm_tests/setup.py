@@ -26,6 +26,7 @@ setup(
         'console_scripts': [
             'fake_robot = hsm_tests.fake_robot.fake_robot:main',
             'hsm_robot_test = hsm_tests.diagram_test:main',
+            'hsm_turtle_run = hsm_tests.turtle_run:main',
         ],
     },
 )

@@ -36,7 +36,7 @@ window.**
 | | checks | lives in | marker | rule |
 | --- | --- | --- | --- | --- |
 | L0 | `ament_flake8`, `ament_pep257` | every package | `linter` | - |
-| L1 | the generated code, the state machine behaviour, the diagram validation | `hsm_robot_ros_generator/test` | `unit` | no robot, no simulator |
+| L1 | the generated code, the state machine behaviour, the diagram validation, the editor plugins, the turtle checks and trace | `hsm_robot_ros_generator/test`, `hsm_robot_ros_tests/hsm_tests/test/unit`, `turtle_driver/test` | `unit` | no robot, no simulator |
 | L2 | the ROS2 contract of one node | `hsm_robot_ros_api/test`, `turtle_driver/test` | `node` | never starts a second framework node |
 | L3 | the HSM state sequence, the API calls, the events | `hsm_robot_ros_tests/hsm_tests/test/integration` | `integration` | a domain of its own, no display |
 | L4 | the trajectory, the event order, the packaging | `hsm_robot_ros_tests/hsm_tests/test/system` | `system` | real time, a smoke set only |
@@ -216,7 +216,7 @@ ros2 launch turtle_driver start.launch.py headless:=true
 colcon test && colcon test-result --verbose        # everything
 
 colcon test --pytest-args -m linter                                        # L0
-colcon test --packages-select hsm_generator --pytest-args -m unit          # L1
+colcon test --packages-select hsm_generator hsm_tests turtle_driver --pytest-args -m unit  # L1
 colcon test --packages-select hsm_robot turtle_driver --pytest-args -m node  # L2
 colcon test --packages-select hsm_tests --pytest-args -m integration       # L3
 colcon test --packages-select hsm_tests --pytest-args -m system            # L4
@@ -286,3 +286,52 @@ line (`The state machine is stopped: ...`, with the state and the line) is the m
 Every process is started in a session of its own; the end of the run, SIGTERM and SIGINT
 stop each session (SIGTERM, SIGKILL after 3 s) and remove the temporary directory, so a
 cancelled run leaves no node behind in the domain.
+
+## 11. The Turtle Runner
+
+`hsm_turtle_run` is the runner of the `hsm-turtle` CyberiadaPro plugin
+(`turtle_driver/docs/editor_plugin.md`): the diagram drives the turtle of turtlesim the way a
+user runs it, and nothing is checked but the diagram itself. It reuses the `Framework` of §10
+with turtlesim and the turtle driver in the place of the fake robot.
+
+```
+ hsm_turtle_run diagram.graphml --workspace WS --trace DIR
+   │ 1 generate into WS/src/hsm_controller (-f), colcon build      launch_support.colcon_command
+   │ 2 start the 6 API nodes + turtlesim_node + driver   one session each, a random domain
+   │ 3 teleport the turtle to --pose, /clear               STARTUP_PARAMETERS, real time
+   │ 4 start WS/install's controller after 3 s; record /hsm_ros_msg and /turtle1/pose
+   │ 5 stop: the duration (0: none) | the controller ends | SIGTERM
+   ▼
+ stdout: the build, the timeline       DIR/<name>.csv, DIR/<name>.svg: the path of the turtle
+```
+
+```
+ros2 run hsm_tests hsm_turtle_run DIAGRAM --check [--json FILE]
+ros2 run hsm_tests hsm_turtle_run DIAGRAM --workspace WS [--trace DIR] [--name NAME]
+    [--duration S] [--pose X Y THETA] [--headless] [--domain N] [--verbose]
+ros2 run hsm_tests hsm_turtle_run --install-editor-plugin [DIR]
+```
+
+`--check` reports the generator's finding, or the warnings of `turtle_rules.py`:
+
+| rule | severity | finds |
+|---|---|---|
+| `turtle-scan` | warning | a trigger on `COLLISION_WARNING` or `RIGHT_OPEN_SPACE`: only the scan raises them, and the driver publishes none |
+| `turtle-pump` | warning | a `Pump` call: nothing of the turtle reacts to it |
+| `turtle-world` | warning | a literal point of `move_to_point` or `move_along_traj` outside 0..11.09 |
+| `turtle-test` | info | a `ros2 hsm test` rule expecting a scan event |
+
+The trace keeps a pose when the turtle has moved 2 cm or turned 0.05 rad; the SVG draws it over
+the world at the scale and colours of turtlesim, which has no service to capture its window.
+It is written however the run ends, a cancelled one included.
+
+| exit | meaning |
+|---|---|
+| 0 | checked, or the run ended with the duration or with the controller's 0 |
+| 1 | the diagram is rejected, or the controller ended with an error |
+| 2 | a usage error |
+| 4 | the build failed, `hsmd` is not installed, or a node failed to start |
+| 143 | cancelled (SIGTERM) |
+
+`test/unit/test_turtle_runner.py` covers the checks and the trace, `test/system/test_turtle_run.py`
+the check, a run around the square and a cancelled run.

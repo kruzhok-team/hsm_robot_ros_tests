@@ -72,16 +72,19 @@ def diagram(name):
                         '{}.graphml'.format(name))
 
 
-def generate_controller(diagram_path, directory=None):
-    # convert a diagram into a package in a temporary directory and return the directory
-    # and the name of the module which holds the controller
-    if directory is None:
+def generate_controller(diagram_path, directory=None, force=False):
+    # convert a diagram into a package in a temporary directory (or the given one, replaced
+    # with force) and return the directory and the name of the module of the controller
+    temporary = directory is None
+    if temporary:
         directory = tempfile.mkdtemp(prefix='hsm_integration_')
     result = subprocess.run(
-        [sys.executable, '-m', 'hsm_generator', diagram_path, '-o', directory, '-q'],
+        [sys.executable, '-m', 'hsm_generator', diagram_path, '-o', directory, '-q']
+        + (['-f'] if force else []),
         capture_output=True, text=True)
     if result.returncode != 0:
-        shutil.rmtree(directory, ignore_errors=True)
+        if temporary:
+            shutil.rmtree(directory, ignore_errors=True)
         raise RuntimeError('generating {} failed: {}'.format(diagram_path, result.stderr))
     library = os.listdir(os.path.join(get_package_share_directory('hsm_generator'),
                                       'hsm_controller'))
@@ -204,6 +207,24 @@ def system_framework(diagram_name, domain, **parameters):
     return actions, directory
 
 
+def colcon_command(workspace):
+    # colcon is told every path it uses, so it works from any directory: without the log
+    # base it leaves a log directory wherever the tests happen to run, which under colcon
+    # is the build directory of this package. The log base belongs to colcon itself and
+    # comes before the verb
+    return ['colcon', '--log-base', os.path.join(workspace, 'log'), 'build',
+            '--base-paths', os.path.join(workspace, 'src'),
+            '--build-base', os.path.join(workspace, 'build'),
+            '--install-base', os.path.join(workspace, 'install'),
+            '--packages-select', 'hsm_controller']
+
+
+def installed_site_packages(workspace):
+    # where the build put the modules of the package
+    return glob.glob(os.path.join(workspace, 'install', 'hsm_controller', 'lib',
+                                  'python3.*', 'site-packages'))
+
+
 def build_controller(diagram_path):
     # The workflow the documentation gives a user: generate the diagram into a workspace
     # and build it. The workspace is its own, because a generated package is always named
@@ -211,20 +232,9 @@ def build_controller(diagram_path):
     # one workspace, and building into the workspace of the developer would overwrite what
     # is already there.
     workspace = tempfile.mkdtemp(prefix='hsm_system_ws_')
-    sources = os.path.join(workspace, 'src')
     directory, module = generate_controller(diagram_path,
-                                            os.path.join(sources, 'hsm_controller'))
-    # colcon is told every path it uses, so it works from any directory: without the log
-    # base it leaves a log directory wherever the tests happen to run, which under colcon
-    # is the build directory of this package. The log base belongs to colcon itself and
-    # comes before the verb
-    result = subprocess.run(
-        ['colcon', '--log-base', os.path.join(workspace, 'log'), 'build',
-         '--base-paths', sources,
-         '--build-base', os.path.join(workspace, 'build'),
-         '--install-base', os.path.join(workspace, 'install'),
-         '--packages-select', 'hsm_controller'],
-        capture_output=True, text=True)
+                                            os.path.join(workspace, 'src', 'hsm_controller'))
+    result = subprocess.run(colcon_command(workspace), capture_output=True, text=True)
     if result.returncode != 0:
         raise RuntimeError('building the generated package failed: {}{}'.format(
             result.stdout, result.stderr))
@@ -243,10 +253,8 @@ def installed_controller(workspace, executable, domain, **parameters):
     # package built while the test runs is not in it. The modules of the package are found
     # through the path of the interpreter, so nothing has to be sourced.
     environment = isolate(domain)
-    site_packages = glob.glob(os.path.join(workspace, 'install', 'hsm_controller', 'lib',
-                                           'python3.*', 'site-packages'))
     environment['PYTHONPATH'] = os.pathsep.join(
-        site_packages + [environment.get('PYTHONPATH', '')])
+        installed_site_packages(workspace) + [environment.get('PYTHONPATH', '')])
     values = dict(STARTUP_PARAMETERS)
     values.update(parameters)
     return ExecuteProcess(cmd=[executable] + parameter_arguments(values),

@@ -22,6 +22,8 @@
   <exec_depend>nav_msgs</exec_depend>
   <exec_depend>sensor_msgs</exec_depend>
   <exec_depend>std_msgs</exec_depend>
+  <!-- the turtle runner places the turtle with the services of turtlesim -->
+  <exec_depend>std_srvs</exec_depend>
 
   <test_depend>ament_flake8</test_depend>
   <test_depend>ament_pep257</test_depend>

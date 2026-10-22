@@ -32,7 +32,7 @@ import os
 
 import pytest
 
-TIERS = ('integration', 'system')
+TIERS = ('unit', 'integration', 'system')
 
 
 def pytest_collection_modifyitems(items):

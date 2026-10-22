@@ -241,7 +241,9 @@ and the one the continuous integration uses. Its package list is described in
 
 The L3 framework without pytest: `hsm_robot_test` runs one diagram against the fake robot
 and checks the expectations the diagram itself declares. It is what the `test` action of the
-CyberiadaPro plugin (`hsm_robot_ros_generator/docs/editor_plugin.md`) runs.
+CyberiadaPro plugin (`hsm_robot_ros_generator/docs/editor_plugin.md`) runs. The generated
+controller runs on the HSM dispatcher `hsmd` (`python3-hsm-dispatcher`); the runner checks it
+imports before it starts anything.
 
 ```
  hsm_robot_test diagram.graphml
@@ -273,9 +275,13 @@ with 0. The timer ticks are counted but left out of the timeline.
 | exit | meaning | diagnostics |
 |---|---|---|
 | 0 | passed | `[]` |
-| 1 | a rule failed, the controller ended with an error, or the diagram is rejected | `test-failed` on the comment, `test-controller`, or the generator's finding |
+| 1 | a rule failed, the controller ended with an error, or the diagram is rejected | `test-failed` on the comment, `test-controller` with the controller's last error, or the generator's finding |
 | 2 | a usage error | - |
-| 4 | a node of the framework failed to start | - |
+| 4 | `hsmd` is not installed, or a node of the framework failed to start | - |
+
+An error of the diagram code stops the dispatcher, and the controller exits with 1; its log
+line (`The state machine is stopped: ...`, with the state and the line) is the message of the
+`test-controller` finding.
 
 Every process is started in a session of its own; the end of the run, SIGTERM and SIGINT
 stop each session (SIGTERM, SIGKILL after 3 s) and remove the temporary directory, so a

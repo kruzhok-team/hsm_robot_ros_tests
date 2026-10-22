@@ -63,6 +63,9 @@ ODOM_TOPIC = '/odom'
 # the scan events and the ticks come with every period: a repeat this close to the
 # previous one is counted but not shown
 REPEAT_GAP = 1.0
+# the rclpy log line of an error: [ERROR] [time] [node]: message
+ERROR_MARK = '[ERROR]'
+ERROR_SEPARATOR = ']: '
 EVENT_NAMES = {code: name for events in gencode.HSM_EVENTS.values()
                for code, name in events.items()}
 
@@ -81,6 +84,8 @@ class Output:
     def __init__(self):
         self.__lock = threading.Lock()
         self.__muted = False
+        # the last error a process logged, by its prefix
+        self.errors = {}
 
     def line(self, text):
         with self.__lock:
@@ -93,7 +98,11 @@ class Output:
     def follow(self, process, prefix, shown):
         def read():
             for line in process.stdout:
-                if shown and not self.__muted:
+                if self.__muted:
+                    continue
+                if ERROR_MARK in line:
+                    self.errors[prefix] = line.rstrip().split(ERROR_SEPARATOR, 1)[-1]
+                if shown:
                     self.line('{}: {}'.format(prefix, line.rstrip()))
         threading.Thread(target=read, daemon=True).start()
 
@@ -124,12 +133,26 @@ class Framework:
                 self.nodes.append((executable, self.__start(
                     [program] + parameter_arguments(parameters), executable, self.__verbose)))
 
-    def start_controller(self, directory, module, values):
+    def controller_environment(self, directory):
         environment = dict(self.__environment)
         environment['PYTHONPATH'] = directory + os.pathsep + environment.get('PYTHONPATH', '')
+        return environment
+
+    def check_dispatcher(self, directory):
+        # the controller runs on hsmd: without it the controller dies on its first line,
+        # which would be reported as a failed diagram
+        result = subprocess.run([sys.executable, '-c', 'import hsmd'],
+                                env=self.controller_environment(directory),
+                                capture_output=True, text=True)
+        if result.returncode != 0:
+            raise RuntimeError('the HSM dispatcher hsmd (hsm-dispatcher-py) is not installed: {}'
+                               .format((result.stderr.strip().splitlines() or [''])[-1]))
+
+    def start_controller(self, directory, module, values):
         self.controller = self.__start(
             [sys.executable, '-m', 'hsm_controller.{}'.format(module)]
-            + parameter_arguments(values), 'controller', True, environment)
+            + parameter_arguments(values), 'controller', True,
+            self.controller_environment(directory))
 
     def failed_node(self):
         for name, process in self.nodes:
@@ -269,6 +292,7 @@ def run(args, output):
     rclpy.init()
     probe = None
     try:
+        framework.check_dispatcher(directory)
         output.line('domain {}, {} rule(s), at most {:g} s'.format(domain, len(rules),
                                                                    args.duration))
         framework.start_nodes(values, robot)
@@ -286,9 +310,11 @@ def run(args, output):
         framework.stop()
         findings = []
         if code not in (None, 0):
-            output.line('FAILED: the controller ended with {}'.format(code))
-            findings.append({'severity': 'error', 'rule': 'test-controller',
-                             'message': 'The controller ended with {}'.format(code)})
+            # the dispatcher logs why it stopped the machine before the controller exits
+            reason = output.errors.get('controller')
+            message = 'The controller ended with {}{}'.format(code, ': ' + reason if reason else '')
+            output.line('FAILED: ' + message)
+            findings.append({'severity': 'error', 'rule': 'test-controller', 'message': message})
         for rule in rules:
             holds = expectations.holds(rule)
             output.line('{}: {}'.format('ok' if holds else 'FAILED', expectations.report(rule)))

@@ -261,7 +261,7 @@ ros2 run hsm_tests hsm_robot_test DIAGRAM [--duration S] [--pose X Y THETA]
     [--scan FORWARD RIGHT ELSEWHERE] [--real-time] [--domain N] [--json FILE] [--verbose]
 ```
 
-The expectations are the lines of the diagram's `ros2 hsm test` comment, parsed by the
+The expectations are the lines of the diagram's formal `ROS2 HSM Test` comment, parsed by the
 generator (`gencode.parse_test_rules`):
 
 | line | holds when |
@@ -319,7 +319,7 @@ ros2 run hsm_tests hsm_turtle_run --install-editor-plugin [DIR]
 | `turtle-scan` | warning | a trigger on `COLLISION_WARNING` or `RIGHT_OPEN_SPACE`: only the scan raises them, and the driver publishes none |
 | `turtle-pump` | warning | a `Pump` call: nothing of the turtle reacts to it |
 | `turtle-world` | warning | a literal point of `move_to_point` or `move_along_traj` outside 0..11.09 |
-| `turtle-test` | info | a `ros2 hsm test` rule expecting a scan event |
+| `turtle-test` | info | a `ROS2 HSM Test` rule expecting a scan event |
 
 The trace keeps a pose when the turtle has moved 2 cm or turned 0.05 rad; the SVG draws it over
 the world at the scale and colours of turtlesim, which has no service to capture its window.

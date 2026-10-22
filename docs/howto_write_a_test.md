@@ -217,7 +217,7 @@ from the outside. Use it to check that something reaches the robot and comes bac
 call, an event, a state change.
 
 To see a diagram reach its events once, a test file is not needed: write the expected
-events into the diagram's `ros2 hsm test` comment and run `ros2 run hsm_tests
+events into the diagram's `ROS2 HSM Test` comment and run `ros2 run hsm_tests
 hsm_robot_test <diagram>` (`hsm_robot_testing.md` §10), or the `test` action of the editor
 plugin. A test file is for what has to keep working.
 

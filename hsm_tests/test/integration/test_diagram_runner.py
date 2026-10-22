@@ -69,12 +69,15 @@ RAISING_DIAGRAM = """<?xml version="1.0" encoding="UTF-8"?>
 name/ raising
 </data>
     </node>
-    <node id="nModules">
-      <data key="dNote">informal</data>
-      <data key="dData">ROS2 HSM Modules
-
-Debug
-Timer</data>
+    <node id="cDebug">
+      <data key="dNote">formal</data>
+      <data key="dName">CGML_COMPONENT Debug</data>
+      <data key="dData">type/ Debug</data>
+    </node>
+    <node id="cTimer">
+      <data key="dNote">formal</data>
+      <data key="dName">CGML_COMPONENT Timer</data>
+      <data key="dData">type/ Timer</data>
     </node>
     <node id="nInit">
       <data key="dVertex">initial</data>
@@ -103,7 +106,7 @@ def runner():
 
 
 def diagram_with_rules(directory, rules):
-    # turtle-square in the editor's format with a 'ros2 hsm test' comment
+    # turtle-square in the editor's format with a formal 'ROS2 HSM Test' comment
     document = CyberiadaML.LocalDocument()
     document.open(diagram('turtle-square'), CyberiadaML.formatDetect,
                   CyberiadaML.geometryFormatNone, False, False, True)
@@ -112,8 +115,8 @@ def diagram_with_rules(directory, rules):
     with open(converted, encoding='utf-8') as f:
         text = f.read()
     position = text.index('<node ', text.index('<graph '))
-    comment = ('<node id="{}">\n<data key="dNote">informal</data>\n'
-               '<data key="dData">ROS2 HSM Test\n\n{}</data>\n</node>\n').format(TEST_COMMENT, rules)
+    comment = ('<node id="{}">\n<data key="dNote">formal</data>\n<data key="dName">ROS2 HSM Test</data>\n'
+               '<data key="dData">{}</data>\n</node>\n').format(TEST_COMMENT, rules)
     tested = directory / 'tested.graphml'
     tested.write_text(text[:position] + comment + text[position:], encoding='utf-8')
     return str(tested)
